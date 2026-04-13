@@ -7,6 +7,10 @@ contextBridge.exposeInMainWorld('soundbridg', {
   getSyncState: () => ipcRenderer.invoke('get-sync-state'),
   setSyncInterval: (interval) => ipcRenderer.invoke('set-sync-interval', interval),
   syncNow: () => ipcRenderer.invoke('sync-now'),
+  getWatchFolders: () => ipcRenderer.invoke('get-watch-folders'),
+  addWatchFolder: (folderPath) => ipcRenderer.invoke('add-watch-folder', folderPath),
+  removeWatchFolder: (folderPath) => ipcRenderer.invoke('remove-watch-folder', folderPath),
+  pickFolder: () => ipcRenderer.invoke('pick-folder'),
 
   onAuthState: (callback) => {
     ipcRenderer.on('auth-state', (event, data) => callback(data));

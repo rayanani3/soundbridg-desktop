@@ -262,6 +262,52 @@ input, button, select, a, .activity-log {
   padding-top: 40px;
 }
 
+/* ─── Watch Folders ──────────────────────────────────────── */
+
+.folder-list { max-height: 120px; overflow-y: auto; }
+
+.folder-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 5px 0;
+}
+
+.folder-row + .folder-row { border-top: 1px solid var(--border); }
+
+.folder-path {
+  font-family: 'SF Mono', 'Menlo', 'Monaco', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.folder-remove {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.folder-remove:hover { color: var(--red); }
+
+.folder-empty {
+  color: var(--text-dim);
+  opacity: 0.5;
+  font-size: 11px;
+  font-style: italic;
+  padding: 8px 0;
+}
+
 /* ─── Logout ─────────────────────────────────────────────── */
 
 .btn-logout {

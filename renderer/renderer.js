@@ -20,6 +20,8 @@ const intervalSelect = document.getElementById('interval-select');
 const syncNowBtn = document.getElementById('sync-now-btn');
 const activityLog = document.getElementById('activity-log');
 const logoutBtn = document.getElementById('logout-btn');
+const folderList = document.getElementById('folder-list');
+const addFolderBtn = document.getElementById('add-folder-btn');
 
 // ─── Init ────────────────────────────────────────────────────────────────────
 
@@ -49,6 +51,7 @@ function showDashboard(email) {
   dashboardScreen.classList.remove('hidden');
   userEmail.textContent = email;
   activityLog.innerHTML = '<p class="log-empty">Waiting for activity...</p>';
+  loadFolders();
 }
 
 loginForm.addEventListener('submit', async (e) => {
@@ -87,6 +90,49 @@ intervalSelect.addEventListener('change', () => {
 
 syncNowBtn.addEventListener('click', () => {
   soundbridg.syncNow();
+});
+
+// ─── Watch Folders ───────────────────────────────────────────────────────────
+
+async function loadFolders() {
+  const folders = await soundbridg.getWatchFolders();
+  renderFolders(folders);
+}
+
+function renderFolders(folders) {
+  folderList.innerHTML = '';
+  if (folders.length === 0) {
+    folderList.innerHTML = '<div class="folder-empty">No folders — click Add Folder</div>';
+    return;
+  }
+  for (const f of folders) {
+    const row = document.createElement('div');
+    row.className = 'folder-row';
+
+    const label = document.createElement('span');
+    label.className = 'folder-path';
+    label.textContent = f.replace(/^\/Users\/[^/]+/, '~');
+    label.title = f;
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'folder-remove';
+    removeBtn.textContent = '\u00D7';
+    removeBtn.addEventListener('click', async () => {
+      await soundbridg.removeWatchFolder(f);
+      loadFolders();
+    });
+
+    row.appendChild(label);
+    row.appendChild(removeBtn);
+    folderList.appendChild(row);
+  }
+}
+
+addFolderBtn.addEventListener('click', async () => {
+  const result = await soundbridg.pickFolder();
+  if (result.canceled) return;
+  await soundbridg.addWatchFolder(result.path);
+  loadFolders();
 });
 
 // ─── IPC Listeners ───────────────────────────────────────────────────────────

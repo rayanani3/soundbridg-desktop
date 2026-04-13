@@ -15,12 +15,13 @@ const AUDIO_EXTENSIONS = new Set(['.mp3', '.wav', '.flac', '.ogg', '.aiff', '.m4
 const DEBOUNCE_MS = 3000;
 const RETRY_DELAYS = [5000, 15000, 45000];
 
-const WATCH_DIRS = [
+const DEFAULT_WATCH_DIRS = [
   path.join(os.homedir(), 'Documents', 'Image-Line', 'FL Studio', 'Audio'),
   path.join(os.homedir(), 'Documents', 'Image-Line', 'FL Studio 2025', 'Audio'),
   path.join(os.homedir(), 'Music'),
-  path.join(os.homedir(), 'Desktop'),
 ];
+
+const WATCHER_DELAY_MS = 5000;
 
 // ─── State ───────────────────────────────────────────────────────────────────
 
@@ -31,12 +32,14 @@ const store = new Store({
     userEmail: null,
     syncInterval: 300000,
     uploadedHashes: {},
+    watchFolders: null,
   },
 });
 
 let mainWindow = null;
 let tray = null;
 let watcher = null;
+let watcherDelayTimer = null;
 let syncTimer = null;
 let uploadQueue = [];
 let isUploading = false;
@@ -63,6 +66,8 @@ if (!gotLock) {
 app.on('ready', () => {
   createTray();
   createWindow();
+  // Do NOT start watcher here — wait until login (or re-login on relaunch)
+  // Only start the sync timer if already logged in; watcher starts after delay
   if (store.get('token')) {
     startSyncEngine();
   }
@@ -257,15 +262,61 @@ ipcMain.handle('sync-now', async () => {
   return { success: true };
 });
 
+ipcMain.handle('get-watch-folders', () => {
+  return getActiveWatchDirs();
+});
+
+ipcMain.handle('add-watch-folder', async (event, folderPath) => {
+  const dirs = getActiveWatchDirs();
+  const resolved = path.resolve(folderPath);
+  if (dirs.includes(resolved)) return { success: false, error: 'Folder already in list' };
+  dirs.push(resolved);
+  store.set('watchFolders', dirs);
+  // Restart watcher to pick up new folder
+  startWatcher();
+  return { success: true, folders: dirs };
+});
+
+ipcMain.handle('remove-watch-folder', (event, folderPath) => {
+  const dirs = getActiveWatchDirs();
+  const resolved = path.resolve(folderPath);
+  const filtered = dirs.filter((d) => d !== resolved);
+  store.set('watchFolders', filtered);
+  // Restart watcher with updated list
+  startWatcher();
+  return { success: true, folders: filtered };
+});
+
+ipcMain.handle('pick-folder', async () => {
+  const { dialog } = require('electron');
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ['openDirectory'],
+    title: 'Select Watch Folder',
+  });
+  if (result.canceled || result.filePaths.length === 0) return { canceled: true };
+  return { canceled: false, path: result.filePaths[0] };
+});
+
 // ─── Sync Engine ─────────────────────────────────────────────────────────────
 
+function getActiveWatchDirs() {
+  const stored = store.get('watchFolders');
+  return stored ? stored.slice() : DEFAULT_WATCH_DIRS.slice();
+}
+
 function startSyncEngine() {
-  startWatcher();
   startSyncTimer();
   sendLog('Sync engine started');
+  // Delay watcher start so macOS permission dialogs can settle
+  if (watcherDelayTimer) clearTimeout(watcherDelayTimer);
+  watcherDelayTimer = setTimeout(() => {
+    watcherDelayTimer = null;
+    startWatcher();
+  }, WATCHER_DELAY_MS);
 }
 
 function stopSyncEngine() {
+  if (watcherDelayTimer) { clearTimeout(watcherDelayTimer); watcherDelayTimer = null; }
   if (watcher) { watcher.close(); watcher = null; }
   if (syncTimer) { clearInterval(syncTimer); syncTimer = null; }
 }
@@ -273,7 +324,8 @@ function stopSyncEngine() {
 function startWatcher() {
   if (watcher) watcher.close();
 
-  const existingDirs = WATCH_DIRS.filter((d) => {
+  const dirs = getActiveWatchDirs();
+  const existingDirs = dirs.filter((d) => {
     try { return fs.existsSync(d) && fs.statSync(d).isDirectory(); }
     catch { return false; }
   });
@@ -283,33 +335,41 @@ function startWatcher() {
     return;
   }
 
-  watcher = chokidar.watch(existingDirs, {
-    ignoreInitial: true,
-    persistent: true,
-    depth: 3,
-    awaitWriteFinish: { stabilityThreshold: DEBOUNCE_MS, pollInterval: 500 },
-    ignored: (filePath, stats) => {
-      const basename = path.basename(filePath);
-      if (basename.startsWith('.')) return true;
-      if (stats && stats.isFile()) {
-        const ext = path.extname(filePath).toLowerCase();
-        return !AUDIO_EXTENSIONS.has(ext);
-      }
-      return false;
-    },
-  });
+  try {
+    watcher = chokidar.watch(existingDirs, {
+      ignoreInitial: true,
+      persistent: true,
+      depth: 3,
+      awaitWriteFinish: { stabilityThreshold: DEBOUNCE_MS, pollInterval: 500 },
+      ignored: (filePath, stats) => {
+        const basename = path.basename(filePath);
+        if (basename.startsWith('.')) return true;
+        if (stats && stats.isFile()) {
+          const ext = path.extname(filePath).toLowerCase();
+          return !AUDIO_EXTENSIONS.has(ext);
+        }
+        return false;
+      },
+    });
 
-  watcher.on('add', (filePath) => {
-    sendLog('Detected: ' + path.basename(filePath));
-    enqueueUpload(filePath);
-  });
+    watcher.on('add', (filePath) => {
+      sendLog('Detected: ' + path.basename(filePath));
+      enqueueUpload(filePath);
+    });
 
-  watcher.on('change', (filePath) => {
-    sendLog('Changed: ' + path.basename(filePath));
-    enqueueUpload(filePath);
-  });
+    watcher.on('change', (filePath) => {
+      sendLog('Changed: ' + path.basename(filePath));
+      enqueueUpload(filePath);
+    });
 
-  sendLog('Watching ' + existingDirs.length + ' director' + (existingDirs.length === 1 ? 'y' : 'ies'));
+    watcher.on('error', (err) => {
+      sendLog('Watcher error: ' + err.message);
+    });
+
+    sendLog('Watching ' + existingDirs.length + ' director' + (existingDirs.length === 1 ? 'y' : 'ies'));
+  } catch (err) {
+    sendLog('Failed to start watcher: ' + err.message);
+  }
 }
 
 function startSyncTimer() {
@@ -327,7 +387,7 @@ async function runSync() {
   sendLog('Scanning for new files...');
 
   let filesFound = 0;
-  for (const dir of WATCH_DIRS) {
+  for (const dir of getActiveWatchDirs()) {
     try {
       if (!fs.existsSync(dir)) continue;
       const files = scanDirectory(dir);
