@@ -11,7 +11,9 @@ const os = require('os');
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const API_BASE = 'https://soundbridg-backend.onrender.com';
-const AUDIO_EXTENSIONS = new Set(['.mp3', '.wav', '.flac', '.ogg', '.aiff', '.m4a']);
+const ALLOWED_EXTENSIONS = new Set(['.mp3', '.wav', '.flac', '.ogg', '.aiff', '.m4a', '.flp']);
+const BLACKLIST_EXTENSIONS = new Set(['.rss', '.ds_store', '.tmp', '.part']);
+const BLACKLIST_NAMES = new Set(['.ds_store', 'thumbs.db', 'desktop.ini']);
 const DEBOUNCE_MS = 3000;
 const RETRY_DELAYS = [5000, 15000, 45000];
 
@@ -56,6 +58,7 @@ let uploadQueue = [];
 let isUploading = false;
 let syncState = 'idle';
 let lastSyncTime = null;
+let watchersInitialized = false;
 
 // ─── Single Instance Lock ────────────────────────────────────────────────────
 
@@ -143,11 +146,21 @@ function createWindow() {
 function createTray() {
   const iconPath = path.join(__dirname, 'assets', 'iconTemplate.png');
   let trayIcon;
-  if (fs.existsSync(iconPath)) {
-    trayIcon = nativeImage.createFromPath(iconPath).resize({ width: 18, height: 18 });
+  try {
+    if (fs.existsSync(iconPath)) {
+      trayIcon = nativeImage.createFromPath(iconPath);
+      if (trayIcon.isEmpty()) {
+        // Fallback: create a simple 18x18 icon programmatically
+        trayIcon = nativeImage.createFromBuffer(Buffer.alloc(18 * 18 * 4, 0), { width: 18, height: 18 });
+      }
+      trayIcon.setTemplateImage(true);
+    } else {
+      trayIcon = nativeImage.createFromBuffer(Buffer.alloc(18 * 18 * 4, 0), { width: 18, height: 18 });
+      trayIcon.setTemplateImage(true);
+    }
+  } catch (err) {
+    trayIcon = nativeImage.createFromBuffer(Buffer.alloc(18 * 18 * 4, 0), { width: 18, height: 18 });
     trayIcon.setTemplateImage(true);
-  } else {
-    trayIcon = nativeImage.createEmpty();
   }
   tray = new Tray(trayIcon);
   tray.setToolTip('SoundBridg');
@@ -257,7 +270,7 @@ ipcMain.handle('add-watch-folder', async (event, folderPath) => {
   if (dirs.includes(resolved)) return { success: false, error: 'Folder already in list' };
   dirs.push(resolved);
   store.set('watchFolders', dirs);
-  startWatcher();
+  if (watchersInitialized) startWatcher();
   sendStateUpdate();
   return { success: true, folders: dirs };
 });
@@ -267,7 +280,7 @@ ipcMain.handle('remove-watch-folder', (event, folderPath) => {
   const resolved = path.resolve(folderPath);
   const filtered = dirs.filter((d) => d !== resolved);
   store.set('watchFolders', filtered);
-  startWatcher();
+  if (watchersInitialized) startWatcher();
   sendStateUpdate();
   return { success: true, folders: filtered };
 });
@@ -337,6 +350,16 @@ ipcMain.handle('clear-sync-history', async () => {
   return { success: false };
 });
 
+// ─── File Filter ────────────────────────────────────────────────────────────
+
+function isAllowedFile(filePath) {
+  const basename = path.basename(filePath).toLowerCase();
+  if (BLACKLIST_NAMES.has(basename)) return false;
+  const ext = path.extname(basename);
+  if (BLACKLIST_EXTENSIONS.has(ext)) return false;
+  return ALLOWED_EXTENSIONS.has(ext);
+}
+
 // ─── Sync Engine ─────────────────────────────────────────────────────────────
 
 function getActiveWatchDirs() {
@@ -347,17 +370,21 @@ function getActiveWatchDirs() {
 function startSyncEngine() {
   restartSyncTimer();
   sendLog('Sync engine started');
-  if (watcherDelayTimer) clearTimeout(watcherDelayTimer);
-  watcherDelayTimer = setTimeout(() => {
-    watcherDelayTimer = null;
-    startWatcher();
-  }, WATCHER_DELAY_MS);
+  if (!watchersInitialized) {
+    if (watcherDelayTimer) clearTimeout(watcherDelayTimer);
+    watcherDelayTimer = setTimeout(() => {
+      watcherDelayTimer = null;
+      watchersInitialized = true;
+      startWatcher();
+    }, WATCHER_DELAY_MS);
+  }
 }
 
 function stopSyncEngine() {
   if (watcherDelayTimer) { clearTimeout(watcherDelayTimer); watcherDelayTimer = null; }
   if (watcher) { watcher.close(); watcher = null; }
   if (syncTimer) { clearInterval(syncTimer); syncTimer = null; }
+  watchersInitialized = false;
 }
 
 function startWatcher() {
@@ -378,8 +405,9 @@ function startWatcher() {
       depth: 3,
       awaitWriteFinish: { stabilityThreshold: DEBOUNCE_MS, pollInterval: 500 },
       ignored: (filePath, stats) => {
-        if (path.basename(filePath).startsWith('.')) return true;
-        if (stats && stats.isFile()) return !AUDIO_EXTENSIONS.has(path.extname(filePath).toLowerCase());
+        const basename = path.basename(filePath);
+        if (basename.startsWith('.')) return true;
+        if (stats && stats.isFile()) return !isAllowedFile(filePath);
         return false;
       },
     });
@@ -443,7 +471,7 @@ function scanDirectory(dir, depth) {
       if (entry.name.startsWith('.')) continue;
       const fullPath = path.join(dir, entry.name);
       if (entry.isDirectory() && depth < 3) results.push.apply(results, scanDirectory(fullPath, depth + 1));
-      else if (entry.isFile() && AUDIO_EXTENSIONS.has(path.extname(entry.name).toLowerCase())) results.push(fullPath);
+      else if (entry.isFile() && isAllowedFile(fullPath)) results.push(fullPath);
     }
   } catch { /* skip unreadable */ }
   return results;
@@ -475,6 +503,8 @@ async function drainQueue(force) {
 
 async function uploadFile(filePath, retryCount) {
   if (retryCount === undefined) retryCount = 0;
+  // Safety net: never upload disallowed files
+  if (!isAllowedFile(filePath)) return;
   const token = store.get('token');
   if (!token) return;
   try {
