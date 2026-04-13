@@ -143,25 +143,16 @@ function createWindow() {
 
 // ─── Tray ────────────────────────────────────────────────────────────────────
 
+// Embedded tray icon (music note, 16x16 + 32x32 @2x) — guarantees visibility
+// regardless of asset path resolution in packaged builds
+// Embedded waveform bar icons (black on transparent, macOS handles template coloring)
+const TRAY_ICON_18 = 'iVBORw0KGgoAAAANSUhEUgAAABIAAAASCAYAAABWzo5XAAAALklEQVR42mNgoDP4P2gM+o+Dpr9B/4mkcWr+T6JB/0cNGi4GUS0dDe4sMnDFCACwR1GvQB2xdQAAAABJRU5ErkJggg==';
+const TRAY_ICON_36 = 'iVBORw0KGgoAAAANSUhEUgAAACQAAAAkCAYAAADhAJiYAAAATUlEQVR42u3YsQoAIAgFQP//p2uNFiMqKu6Bg4vcJGKEnElpCuhKUA/IeiCgfvgMaCkQKNspO0DDQCAgICAgoNdBzo8vQI58IM8GoF2pctGQfiCtvHUAAAAASUVORK5CYII=';
+
 function createTray() {
-  const iconPath = path.join(__dirname, 'assets', 'iconTemplate.png');
-  let trayIcon;
-  try {
-    if (fs.existsSync(iconPath)) {
-      trayIcon = nativeImage.createFromPath(iconPath);
-      if (trayIcon.isEmpty()) {
-        // Fallback: create a simple 18x18 icon programmatically
-        trayIcon = nativeImage.createFromBuffer(Buffer.alloc(18 * 18 * 4, 0), { width: 18, height: 18 });
-      }
-      trayIcon.setTemplateImage(true);
-    } else {
-      trayIcon = nativeImage.createFromBuffer(Buffer.alloc(18 * 18 * 4, 0), { width: 18, height: 18 });
-      trayIcon.setTemplateImage(true);
-    }
-  } catch (err) {
-    trayIcon = nativeImage.createFromBuffer(Buffer.alloc(18 * 18 * 4, 0), { width: 18, height: 18 });
-    trayIcon.setTemplateImage(true);
-  }
+  // Use embedded icon — avoids file path issues in packaged builds
+  const trayIcon = nativeImage.createFromDataURL('data:image/png;base64,' + TRAY_ICON_18);
+  trayIcon.setTemplateImage(true);
   tray = new Tray(trayIcon);
   tray.setToolTip('SoundBridg');
   updateTrayMenu();
