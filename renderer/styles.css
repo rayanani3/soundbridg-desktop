@@ -1,0 +1,280 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg: #0A0A0F;
+  --bg-card: #12121A;
+  --bg-input: #1A1A25;
+  --border: #2A2A3A;
+  --text: #E8E8F0;
+  --text-dim: #8888A0;
+  --blue: #1B3A5C;
+  --blue-light: #2A5080;
+  --gold: #C9A84C;
+  --gold-dim: #9A8040;
+  --green: #4CAF50;
+  --red: #E53935;
+  --orange: #FF9800;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  overflow: hidden;
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+input, button, select, a, .activity-log {
+  -webkit-app-region: no-drag;
+}
+
+.screen {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 24px;
+}
+
+.hidden { display: none !important; }
+
+/* ─── Login ──────────────────────────────────────────────── */
+
+#login-screen {
+  justify-content: center;
+  align-items: center;
+  gap: 32px;
+}
+
+.logo-section { text-align: center; }
+
+.logo-icon { font-size: 48px; margin-bottom: 8px; }
+
+.logo-text {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.tagline { color: var(--text-dim); font-size: 13px; margin-top: 4px; }
+
+.form {
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.input-group { display: flex; flex-direction: column; gap: 6px; }
+
+.input-group label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.input-group input {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.input-group input:focus { border-color: var(--gold); }
+.input-group input::placeholder { color: var(--text-dim); opacity: 0.5; }
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--blue), var(--blue-light));
+  color: var(--text);
+  border: none;
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-primary:hover { opacity: 0.9; }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.error-text {
+  color: var(--red);
+  font-size: 13px;
+  text-align: center;
+  min-height: 18px;
+}
+
+.register-link { text-align: center; font-size: 12px; color: var(--text-dim); }
+.register-link a { color: var(--gold); text-decoration: none; }
+.register-link a:hover { text-decoration: underline; }
+
+/* ─── Dashboard ──────────────────────────────────────────── */
+
+#dashboard-screen { gap: 16px; padding-top: 40px; }
+
+.dash-header { display: flex; justify-content: space-between; align-items: center; }
+
+.user-info { display: flex; align-items: center; gap: 8px; }
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+}
+
+.status-dot.error { background: var(--red); }
+.status-dot.syncing {
+  background: var(--orange);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+#user-email { font-size: 13px; color: var(--text-dim); }
+
+.sync-badge {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  background: rgba(76, 175, 80, 0.15);
+  color: var(--green);
+}
+
+.sync-badge.syncing { background: rgba(255, 152, 0, 0.15); color: var(--orange); }
+.sync-badge.error { background: rgba(229, 57, 53, 0.15); color: var(--red); }
+
+.dash-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.log-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.section-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.section-value { font-size: 13px; color: var(--text); }
+
+.section-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+}
+
+.section-row + .section-row { border-top: 1px solid var(--border); }
+
+.interval-select {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 13px;
+  color: var(--text);
+  outline: none;
+  cursor: pointer;
+}
+
+.interval-select option { background: var(--bg); color: var(--text); }
+
+.btn-small {
+  background: var(--blue);
+  color: var(--text);
+  border: none;
+  border-radius: 6px;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.btn-small:hover { opacity: 0.85; }
+
+/* ─── Activity Log ───────────────────────────────────────── */
+
+.activity-log {
+  flex: 1;
+  min-height: 120px;
+  max-height: 300px;
+  overflow-y: auto;
+  font-family: 'SF Mono', 'Menlo', 'Monaco', monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-dim);
+}
+
+.activity-log::-webkit-scrollbar { width: 4px; }
+.activity-log::-webkit-scrollbar-track { background: transparent; }
+.activity-log::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.log-entry { padding: 2px 0; word-break: break-all; }
+.log-entry.error { color: var(--red); }
+.log-entry.upload { color: var(--gold); }
+
+.log-empty {
+  color: var(--text-dim);
+  opacity: 0.5;
+  font-style: italic;
+  text-align: center;
+  padding-top: 40px;
+}
+
+/* ─── Logout ─────────────────────────────────────────────── */
+
+.btn-logout {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 13px;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 8px;
+  flex-shrink: 0;
+}
+
+.btn-logout:hover { border-color: var(--red); color: var(--red); }

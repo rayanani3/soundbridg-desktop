@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';">
+  <title>SoundBridg</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Login Screen -->
+  <div id="login-screen" class="screen">
+    <div class="logo-section">
+      <div class="logo-icon">♪</div>
+      <h1 class="logo-text">SoundBridg</h1>
+      <p class="tagline">Auto-sync your mixes to the cloud</p>
+    </div>
+    <form id="login-form" class="form">
+      <div class="input-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" placeholder="you@email.com" required autocomplete="email">
+      </div>
+      <div class="input-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" placeholder="Password" required autocomplete="current-password">
+      </div>
+      <button type="submit" id="login-btn" class="btn-primary">Sign In</button>
+      <p id="login-error" class="error-text"></p>
+      <p class="register-link">
+        Don't have an account? <a href="#" id="register-link">Register on soundbridg.com</a>
+      </p>
+    </form>
+  </div>
+
+  <!-- Dashboard Screen -->
+  <div id="dashboard-screen" class="screen hidden">
+    <div class="dash-header">
+      <div class="user-info">
+        <div class="status-dot" id="status-dot"></div>
+        <span id="user-email">user@email.com</span>
+      </div>
+      <div class="sync-badge" id="sync-badge">Idle</div>
+    </div>
+    <div class="dash-section">
+      <div class="section-row">
+        <span class="section-label">Sync Status</span>
+        <span id="sync-status-text" class="section-value">Idle</span>
+      </div>
+      <div class="section-row">
+        <span class="section-label">Last Sync</span>
+        <span id="last-sync-text" class="section-value">Never</span>
+      </div>
+      <div class="section-row">
+        <span class="section-label">Interval</span>
+        <select id="interval-select" class="interval-select">
+          <option value="60000">1 minute</option>
+          <option value="300000" selected>5 minutes</option>
+          <option value="900000">15 minutes</option>
+          <option value="1800000">30 minutes</option>
+          <option value="3600000">1 hour</option>
+          <option value="10800000">3 hours</option>
+        </select>
+      </div>
+    </div>
+    <div class="dash-section log-section">
+      <div class="section-header">
+        <span class="section-label">Activity Log</span>
+        <button id="sync-now-btn" class="btn-small">Sync Now</button>
+      </div>
+      <div id="activity-log" class="activity-log">
+        <p class="log-empty">Waiting for activity...</p>
+      </div>
+    </div>
+    <button id="logout-btn" class="btn-logout">Sign Out</button>
+  </div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
