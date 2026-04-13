@@ -1,4 +1,4 @@
-const { soundbridg } = window;
+const api = window.soundbridg;
 
 // ─── DOM Elements ────────────────────────────────────────────────────────────
 
@@ -26,10 +26,10 @@ const addFolderBtn = document.getElementById('add-folder-btn');
 // ─── Init ────────────────────────────────────────────────────────────────────
 
 async function init() {
-  const auth = await soundbridg.getAuthState();
+  const auth = await api.getAuthState();
   if (auth.loggedIn) {
     showDashboard(auth.email);
-    const sync = await soundbridg.getSyncState();
+    const sync = await api.getSyncState();
     updateSyncUI(sync);
   } else {
     showLogin();
@@ -60,7 +60,7 @@ loginForm.addEventListener('submit', async (e) => {
   loginBtn.textContent = 'Signing in...';
   loginError.textContent = '';
 
-  const result = await soundbridg.login(emailInput.value, passwordInput.value);
+  const result = await api.login(emailInput.value, passwordInput.value);
 
   if (result.success) {
     showDashboard(result.email);
@@ -78,24 +78,24 @@ registerLink.addEventListener('click', (e) => {
 });
 
 logoutBtn.addEventListener('click', async () => {
-  await soundbridg.logout();
+  await api.logout();
   showLogin();
 });
 
 // ─── Sync Controls ───────────────────────────────────────────────────────────
 
 intervalSelect.addEventListener('change', () => {
-  soundbridg.setSyncInterval(Number(intervalSelect.value));
+  api.setSyncInterval(Number(intervalSelect.value));
 });
 
 syncNowBtn.addEventListener('click', () => {
-  soundbridg.syncNow();
+  api.syncNow();
 });
 
 // ─── Watch Folders ───────────────────────────────────────────────────────────
 
 async function loadFolders() {
-  const folders = await soundbridg.getWatchFolders();
+  const folders = await api.getWatchFolders();
   renderFolders(folders);
 }
 
@@ -118,7 +118,7 @@ function renderFolders(folders) {
     removeBtn.className = 'folder-remove';
     removeBtn.textContent = '\u00D7';
     removeBtn.addEventListener('click', async () => {
-      await soundbridg.removeWatchFolder(f);
+      await api.removeWatchFolder(f);
       loadFolders();
     });
 
@@ -129,24 +129,24 @@ function renderFolders(folders) {
 }
 
 addFolderBtn.addEventListener('click', async () => {
-  const result = await soundbridg.pickFolder();
+  const result = await api.pickFolder();
   if (result.canceled) return;
-  await soundbridg.addWatchFolder(result.path);
+  await api.addWatchFolder(result.path);
   loadFolders();
 });
 
 // ─── IPC Listeners ───────────────────────────────────────────────────────────
 
-soundbridg.onAuthState((data) => {
+api.onAuthState((data) => {
   if (data.loggedIn) showDashboard(data.email);
   else showLogin();
 });
 
-soundbridg.onSyncState((data) => {
+api.onSyncState((data) => {
   updateSyncUI(data);
 });
 
-soundbridg.onLog((message) => {
+api.onLog((message) => {
   addLogEntry(message);
 });
 

@@ -1,6 +1,6 @@
 {
   "name": "soundbridg-desktop",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "SoundBridg — Auto-sync FL Studio exports to the cloud",
   "main": "main.js",
   "author": "SoundBridg",
