@@ -36,7 +36,6 @@
       "identity": null
     },
     "dmg": {
-      "backgroundColor": "#0A0A0F",
       "title": "SoundBridg",
       "contents": [
         { "x": 130, "y": 220 },
